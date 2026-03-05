@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "560318789684",
+    "project_id": "pillmate-257a9",
+    "storage_bucket": "pillmate-257a9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:560318789684:android:69d2687a776814c8c13261",
+        "android_client_info": {
+          "package_name": "com.example.pillmate_college"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIusSIADL5Sx1cgIhRiVJhlMzKMj1xcWY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:560318789684:android:4a6fab779ee30872c13261",
+        "android_client_info": {
+          "package_name": "com.example.projects"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBIusSIADL5Sx1cgIhRiVJhlMzKMj1xcWY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
