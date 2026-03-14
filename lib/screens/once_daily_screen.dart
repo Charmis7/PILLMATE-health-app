@@ -1,15 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:pillmate_college/screens/routine_screen.dart';
+import 'homepage_screen.dart';
+import 'medicine_model.dart';
+import 'medicine_service.dart';
+import 'notification_permission.dart';
+import 'notification_service.dart';
+
 
 class OnceDailyScreen extends StatefulWidget {
   final String medicineName;
   final String unit;
+  final String condition;
 
   const OnceDailyScreen({
     super.key,
     required this.medicineName,
     required this.unit,
+    required this.condition,
   });
 
   @override
@@ -18,8 +25,9 @@ class OnceDailyScreen extends StatefulWidget {
 
 class _OnceDailyScreenState extends State<OnceDailyScreen> {
   DateTime selectedDate = DateTime.now();
-  TimeOfDay intakeTime = const TimeOfDay(hour: 6, minute: 0);
+  TimeOfDay intakeTime = const TimeOfDay(hour: 8, minute: 0);
   int dose = 1;
+  bool _isSaving = false;
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -32,17 +40,57 @@ class _OnceDailyScreenState extends State<OnceDailyScreen> {
   }
 
   Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: intakeTime,
-    );
+    final picked = await showTimePicker(context: context, initialTime: intakeTime);
     if (picked != null) setState(() => intakeTime = picked);
+  }
+
+  Future<void> _saveAndNavigate() async {
+    setState(() => _isSaving = true);
+
+    try {
+      // 1. Build the entry
+      final entry = MedicineEntry(
+        id: '', // will be set after Firestore save
+        name: widget.medicineName,
+        unit: widget.unit,
+        condition: widget.condition,
+        frequency: 'once',
+        startDate: selectedDate,
+        intakes: [
+          IntakeSlot(time: intakeTime, dose: dose, label: 'Daily'),
+        ],
+      );
+
+      // 2. Save to Firestore → get doc ID
+      final docId = await MedicineService.saveMedicine(entry);
+
+      // 3. Schedule local notification
+      await NotificationService.scheduleMedicineNotifications(
+        notificationBaseId: NotificationService.idFromDocId(docId),
+        medicineName: widget.medicineName,
+        intakes: entry.intakes,
+      );
+
+      // 4. Go to HomeScreen (clear stack)
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePageScreen()),
+              (route) => false,
+        );
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error saving: $e")),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE1EBFC),
+      backgroundColor: const Color(0xFFD6EAFE),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -51,15 +99,10 @@ class _OnceDailyScreenState extends State<OnceDailyScreen> {
               const SizedBox(height: 20),
               Image.asset('assets/images/img_2.png', height: 100),
               const SizedBox(height: 20),
-
               Text(
                 "Reminder for ${widget.medicineName}",
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF4C8CFF),
-                ),
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF4C8CFF)),
               ),
               const SizedBox(height: 10),
               const Text(
@@ -68,18 +111,12 @@ class _OnceDailyScreenState extends State<OnceDailyScreen> {
                 style: TextStyle(fontSize: 16, color: Colors.grey),
               ),
               const SizedBox(height: 20),
-
               Expanded(
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      _buildRow(
-                        "Start date",
-                        DateFormat('yMMMd').format(selectedDate),
-                        _pickDate,
-                      ),
+                      _buildRow("Start date", DateFormat('yMMMd').format(selectedDate), _pickDate),
                       const Divider(),
-
                       _sectionTitle("Intake"),
                       _buildRow("Time", intakeTime.format(context), _pickTime),
                       _doseRow(dose, (val) => setState(() => dose = val)),
@@ -87,28 +124,18 @@ class _OnceDailyScreenState extends State<OnceDailyScreen> {
                   ),
                 ),
               ),
-
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF5D9CFF),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const RoutineSetupScreen(),
-                      ),
-                    );
-                  },
-                  child: const Text(
-                    "Set Reminder",
-                    style: TextStyle(color: Colors.white, fontSize: 18),
-                  ),
+                  onPressed: _isSaving ? null : _saveAndNavigate,
+                  child: _isSaving
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text("Set Reminder", style: TextStyle(color: Colors.white, fontSize: 18)),
                 ),
               ),
             ],
@@ -122,14 +149,7 @@ class _OnceDailyScreenState extends State<OnceDailyScreen> {
     alignment: Alignment.centerLeft,
     child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Text(
-        text,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.blueGrey,
-          fontSize: 14,
-        ),
-      ),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 14)),
     ),
   );
 
@@ -140,7 +160,7 @@ class _OnceDailyScreenState extends State<OnceDailyScreen> {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value, style: const TextStyle(color: Colors.blue)),
+          Text(value, style: const TextStyle(color: Colors.blue, fontSize: 16)),
           const Icon(Icons.arrow_drop_down, color: Colors.blue),
         ],
       ),
@@ -155,12 +175,14 @@ class _OnceDailyScreenState extends State<OnceDailyScreen> {
       Row(
         children: [
           IconButton(
-              icon: const Icon(Icons.remove_circle_outline, color: Colors.blue),
-              onPressed: dose > 1 ? () => onChanged(dose - 1) : null),
+            icon: const Icon(Icons.remove_circle_outline, color: Colors.blue),
+            onPressed: dose > 1 ? () => onChanged(dose - 1) : null,
+          ),
           Text("$dose ${widget.unit}", style: const TextStyle(color: Colors.blue)),
           IconButton(
-              icon: const Icon(Icons.add_circle_outline, color: Colors.blue),
-              onPressed: () => onChanged(dose + 1)),
+            icon: const Icon(Icons.add_circle_outline, color: Colors.blue),
+            onPressed: () => onChanged(dose + 1),
+          ),
         ],
       ),
     ],

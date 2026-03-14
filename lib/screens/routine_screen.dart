@@ -4,7 +4,6 @@ import 'package:pillmate_college/screens/homepage_screen.dart';
 import 'package:pillmate_college/screens/step_2.1_screen.dart';
 import 'package:pillmate_college/screens/step_3.1_screen.dart';
 import 'package:pillmate_college/screens/step_4_screen.dart';
-import 'package:pillmate_college/widget/animation_widget.dart';
 
 class RoutineSetupScreen extends StatelessWidget {
   const RoutineSetupScreen({super.key});
@@ -89,27 +88,18 @@ class RoutineSetupScreen extends StatelessWidget {
                 height: 55,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF4A8CFF),
+                    backgroundColor: const Color(0xFF4A90FF),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
                     elevation: 6,
                   ),
                   onPressed: () {
-                    // Show celebration animation
+                    // Directly navigate to HomePageScreen
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => SetupCompleteAnimationWidget(
-                          onComplete: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const HomePageScreen(),
-                              ),
-                            );
-                          },
-                        ),
+                        builder: (_) => const HomePageScreen(),
                       ),
                     );
                   },

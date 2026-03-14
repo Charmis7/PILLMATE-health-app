@@ -36,7 +36,7 @@ class _Step_4State extends State<Step_4> {
           children: [
             // --- IMAGE ---
             Center(
-              child: Image.asset("assets/images/img_7.png", height: 180),
+              child: Image.asset("assets/images/img_7.png", height: 200),
             ),
 
             // --- TITLE ---

@@ -31,7 +31,7 @@ class Step_2_1 extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text("Search", style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.green.shade50,
         elevation: 0,
       ),
       body: Column(

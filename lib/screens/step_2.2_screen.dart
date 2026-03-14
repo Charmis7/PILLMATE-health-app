@@ -73,7 +73,7 @@ class _Step_2_2State extends State<Step_2_2> {
         child: Column(
           children: [
             // TOP ICON
-            Center(child: Image.asset("assets/images/img_1.png", height: 220)),
+            Center(child: Image.asset("assets/images/img_1.png", height: 250)),
             const SizedBox(height: 20),
             const Text(
               "Set up reminders to regularly log your measurements and track your progress.",

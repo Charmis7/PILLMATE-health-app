@@ -1,90 +1,130 @@
-
 import 'package:flutter/material.dart';
-import 'package:pillmate_college/screens/routine_screen.dart';
+import 'package:intl/intl.dart';
+import 'homepage_screen.dart';
+import 'medicine_model.dart';
+import 'medicine_service.dart';
 
 class AsNeededScreen extends StatefulWidget {
   final String medicineName;
   final String unit;
+  final String condition;
 
-  const AsNeededScreen({super.key, required this.medicineName, required this.unit});
+  const AsNeededScreen({
+    super.key,
+    required this.medicineName,
+    required this.unit,
+    required this.condition,
+  });
 
   @override
   State<AsNeededScreen> createState() => _AsNeededScreenState();
 }
 
 class _AsNeededScreenState extends State<AsNeededScreen> {
-  bool isToggled = true;
+  DateTime selectedDate = DateTime.now();
+  int dose = 1;
+  bool _isSaving = false;
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context, initialDate: selectedDate,
+      firstDate: DateTime.now(), lastDate: DateTime(2100),
+    );
+    if (picked != null) setState(() => selectedDate = picked);
+  }
+
+  Future<void> _saveAndNavigate() async {
+    setState(() => _isSaving = true);
+    try {
+      final entry = MedicineEntry(
+        id: '', name: widget.medicineName, unit: widget.unit,
+        condition: widget.condition, frequency: 'asneeded',
+        startDate: selectedDate,
+        intakes: [IntakeSlot(time: const TimeOfDay(hour: 0, minute: 0), dose: dose, label: 'As Needed')],
+      );
+
+      await MedicineService.saveMedicine(entry);
+      // No notifications for "as needed"
+
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePageScreen()),
+              (route) => false,
+        );
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F7FF),
-      body: ListView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        children: [
-          const SizedBox(height: 60),
-          Center(
-            child: Image.asset('assets/images/img_8.png', height: 50),
-          ),
-          const SizedBox(height: 30),
-          Text(
-            "Stock: ${widget.medicineName}",
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-          const Text(
-            "We'll notify you before your medicine runs out.",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 30),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      backgroundColor: const Color(0xFFD6EAFE),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              Image.asset('assets/images/img_2.png', height: 100),
+              const SizedBox(height: 20),
+              Text("${widget.medicineName} — As Needed",
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF4C8CFF))),
+              const SizedBox(height: 10),
+              const Text("No reminder — take when required",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16, color: Colors.grey)),
+              const SizedBox(height: 30),
+              Expanded(
+                child: Column(
                   children: [
-                    const Text("Remind me", style: TextStyle(fontSize: 16)),
-                    Switch(
-                      value: isToggled,
-                      onChanged: (newValue) => setState(() => isToggled = newValue),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text("Start date", style: TextStyle(fontWeight: FontWeight.bold)),
+                      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                        Text(DateFormat('yMMMd').format(selectedDate),
+                            style: const TextStyle(color: Colors.blue, fontSize: 16)),
+                        const Icon(Icons.arrow_drop_down, color: Colors.blue),
+                      ]),
+                      onTap: _pickDate,
+                    ),
+                    const Divider(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Dose", style: TextStyle(fontWeight: FontWeight.bold)),
+                        Row(children: [
+                          IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.blue),
+                              onPressed: dose > 1 ? () => setState(() => dose--) : null),
+                          Text("$dose ${widget.unit}", style: const TextStyle(color: Colors.blue)),
+                          IconButton(icon: const Icon(Icons.add_circle_outline, color: Colors.blue),
+                              onPressed: () => setState(() => dose++)),
+                        ]),
+                      ],
                     ),
                   ],
                 ),
-                const Divider(),
-                const Align(alignment: Alignment.centerLeft, child: Text("Current Inventory")),
-                TextField(
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(hintText: "30", suffixText: widget.unit),
+              ),
+              SizedBox(
+                width: double.infinity, height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5D9CFF),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isSaving ? null : _saveAndNavigate,
+                  child: _isSaving
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text("Save Medicine", style: TextStyle(color: Colors.white, fontSize: 18)),
                 ),
-                const SizedBox(height: 20),
-                const Align(alignment: Alignment.centerLeft, child: Text("Remind me when low:")),
-                TextField(
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(hintText: "5", suffixText: widget.unit),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 40),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (context) => const RoutineSetupScreen()));
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              minimumSize: const Size(double.infinity, 50),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text("Finish Setup", style: TextStyle(color: Colors.white)),
-          ),
-        ],
+        ),
       ),
     );
   }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pillmate_college/screens/step_1.2_screen.dart';
+import 'step_1.2_screen.dart';
 
 class Step_1 extends StatefulWidget {
   const Step_1({super.key});
@@ -13,44 +13,31 @@ class _Step_1State extends State<Step_1> {
   String? selectedUnit = "Pill(s)";
   String? selectedCondition;
 
-  // ✅ Medicine categories map
   final Map<String, List<String>> medicineCategories = {
-    "Pain / Fever": [
-      "Aspirin", "Paracetamol", "Ibuprofen", "Dolo 650", "Crocin", "Calpol",
-      "Combiflam", "Brufen", "Disprin", "Saridon", "Voveran", "Diclofenac", "Naproxen",
-    ],
-    "Cold & Cough": ["Sinarest", "D-Cold", "Cheston Cold", "Ascoril", "Alex", "Benadryl", "Grilinctus"],
-    "Allergy": ["Cetirizine", "Allegra", "Avil", "Montair", "Levocetrizine", "Loratadine"],
-    "Antibiotics": ["Amoxicillin", "Azithromycin", "Ciprofloxacin", "Augmentin", "Moxikind", "Zifi", "Norflox", "Doxycycline", "Cephalexin"],
-    "Diabetes": ["Metformin", "Glimepiride", "Glipizide", "Insulin", "Januvia"],
-    "Blood Pressure": ["Amlodipine", "Atenolol", "Metoprolol", "Losartan", "Telmisartan", "Lisinopril", "Telma", "Amlong"],
-    "Cholesterol / Heart Protection": ["Atorvastatin", "Rosuvastatin", "Simvastatin", "Storvas", "Clopidogrel", "Ecosprin"],
-    "Stomach / Acidity / Gas": ["Omeprazole", "Pantoprazole", "Ranitidine", "Esomeprazole", "Pan", "Pantocid", "Digene", "Eno"],
-    "Vitamins & Supplements": ["Vitamin D3", "Vitamin B12", "Vitamin C", "Calcium", "Iron", "Folic Acid", "Becosules", "Shelcal", "Zincovit"],
-    "Thyroid": ["Levothyroxine", "Eltroxin", "Thyronorm"],
-    "Asthma / Breathing": ["Albuterol", "Salbutamol", "Montelukast", "Asthalin"],
+    "Pain / Fever": ["Aspirin","Paracetamol","Ibuprofen","Dolo 650","Crocin","Calpol","Combiflam","Brufen","Disprin","Saridon","Voveran","Diclofenac","Naproxen"],
+    "Cold & Cough": ["Sinarest","D-Cold","Cheston Cold","Ascoril","Alex","Benadryl","Grilinctus"],
+    "Allergy": ["Cetirizine","Allegra","Avil","Montair","Levocetrizine","Loratadine"],
+    "Antibiotics": ["Amoxicillin","Azithromycin","Ciprofloxacin","Augmentin","Moxikind","Zifi","Norflox","Doxycycline","Cephalexin"],
+    "Diabetes": ["Metformin","Glimepiride","Glipizide","Insulin","Januvia"],
+    "Blood Pressure": ["Amlodipine","Atenolol","Metoprolol","Losartan","Telmisartan","Lisinopril","Telma","Amlong"],
+    "Cholesterol / Heart Protection": ["Atorvastatin","Rosuvastatin","Simvastatin","Storvas","Clopidogrel","Ecosprin"],
+    "Stomach / Acidity / Gas": ["Omeprazole","Pantoprazole","Ranitidine","Esomeprazole","Pan","Pantocid","Digene","Eno"],
+    "Vitamins & Supplements": ["Vitamin D3","Vitamin B12","Vitamin C","Calcium","Iron","Folic Acid","Becosules","Shelcal","Zincovit"],
+    "Thyroid": ["Levothyroxine","Eltroxin","Thyronorm"],
+    "Asthma / Breathing": ["Albuterol","Salbutamol","Montelukast","Asthalin"],
   };
 
   @override
   Widget build(BuildContext context) {
-    // Flatten the map to a single list for dropdown
-    List<String> medicineItems = medicineCategories.values.expand((list) => list).toList();
+    List<String> medicineItems =
+    medicineCategories.values.expand((list) => list).toList();
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFBBDEFB),
-              Color(0xFFE3F2FD),
-            ],
-          ),
-        ),
+        color: const Color(0xFFD6EAFE),
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -68,7 +55,7 @@ class _Step_1State extends State<Step_1> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  "How should your health condition be measured?",
+                  "Select your medicine, unit and condition",
                   textAlign: TextAlign.center,
                   style: TextStyle(fontSize: 15, color: Colors.black54),
                 ),
@@ -78,30 +65,24 @@ class _Step_1State extends State<Step_1> {
                     physics: const BouncingScrollPhysics(),
                     child: Column(
                       children: [
-                        // Medicine Name Dropdown
-                        _buildGlassDropdown(
+                        simpleDropdown(
                           hint: "Medicine Name",
                           value: selectedMed,
                           items: medicineItems,
                           onChanged: (val) => setState(() => selectedMed = val),
                         ),
                         const SizedBox(height: 20),
-                        // Unit Dropdown
-                        _buildGlassDropdown(
+                        simpleDropdown(
                           hint: "Unit",
                           value: selectedUnit,
                           items: ["Pill(s)", "Tablet(s)", "Spoon", "ML", "Capsule(s)"],
                           onChanged: (val) => setState(() => selectedUnit = val),
                         ),
                         const SizedBox(height: 20),
-                        // Health Condition Dropdown
-                        _buildGlassDropdown(
+                        simpleDropdown(
                           hint: "Health Condition",
                           value: selectedCondition,
-                          items: [
-                            "Fever", "Headache", "Blood Pressure", "High Cholesterol",
-                            "Acidity", "Allergies", "Mental Health"
-                          ],
+                          items: ["Fever","Headache","Blood Pressure","High Cholesterol","Acidity","Allergies","Mental Health"],
                           onChanged: (val) => setState(() => selectedCondition = val),
                         ),
                       ],
@@ -121,28 +102,24 @@ class _Step_1State extends State<Step_1> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
                       onPressed: () {
-                        if (selectedMed != null) {
+                        if (selectedMed != null && selectedCondition != null) {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => Step_2(
                                 medicineName: selectedMed!,
                                 unit: selectedUnit ?? "Pill(s)",
+                                condition: selectedCondition!, // ← pass condition
                               ),
                             ),
                           );
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Please select a medicine"),
-                            ),
+                            const SnackBar(content: Text("Please select medicine and health condition")),
                           );
                         }
                       },
-                      child: const Text(
-                        "Next",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
+                      child: const Text("Next", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                     ),
                   ),
                 ),
@@ -154,33 +131,18 @@ class _Step_1State extends State<Step_1> {
     );
   }
 
-  // Glass-style Dropdown helper
-  Widget _buildGlassDropdown({
+  Widget simpleDropdown({
     required String hint,
     required String? value,
     required List<String> items,
     required Function(String?) onChanged,
   }) {
-    return DropdownButtonFormField<String>(
+    return DropdownButton<String>(
       value: value,
-      hint: Text(hint, style: const TextStyle(color: Colors.black45)),
-      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF5D9CFF)),
-      dropdownColor: const Color(0xFFF5F9FF),
-      decoration: InputDecoration(
-        filled: true,
-        fillColor: Colors.white.withOpacity(0.7),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.white),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Color(0xFF5D9CFF), width: 1.5),
-        ),
-      ),
-      items: items.map((i) => DropdownMenuItem(value: i, child: Text(i))).toList(),
+      hint: Text(hint),
+      items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
       onChanged: onChanged,
+      isExpanded: true,
     );
   }
 }
