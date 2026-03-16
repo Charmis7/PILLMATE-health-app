@@ -75,6 +75,32 @@ class HomeContent extends StatelessWidget {
     required this.onDateSelected,
   });
 
+  // ── HELPER: strip time so we compare dates only (ignore hours/minutes) ──
+  DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+  // Why needed?
+  // DateTime.now() = "2024-01-15 09:30:00"
+  // startDate from Firestore = "2024-01-15 00:00:00"
+  // Comparing them directly would say they are NOT equal because of the time part
+  // _dateOnly strips the time → both become "2024-01-15 00:00:00" → equal ✅
+
+  // ── HELPER: check if a medicine should show on the selected date ────────
+  bool _shouldShowOnDate(MedicineEntry med, DateTime selected) {
+    final selectedDay = _dateOnly(selected);
+    final startDay   = _dateOnly(med.startDate);
+
+    // Rule: only show this medicine if selectedDate >= startDate
+    // Example:
+    //   Medicine startDate = Jan 20
+    //   selectedDate = Jan 18  →  18 < 20  →  DON'T show (medicine hasn't started yet)
+    //   selectedDate = Jan 20  →  20 == 20 →  SHOW (medicine starts today)
+    //   selectedDate = Jan 25  →  25 > 20  →  SHOW (medicine is ongoing)
+    return !selectedDay.isBefore(startDay);
+    // !selectedDay.isBefore(startDay)
+    // = "selectedDay is NOT before startDay"
+    // = "selectedDay is on or after startDay"
+    // = show the medicine
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -128,16 +154,36 @@ class HomeContent extends StatelessWidget {
         ),
 
         const SizedBox(height: 20),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              "Today's Schedule",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+
+        // ── Date header — shows which date is selected ─────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Schedule",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              // Shows "Today", "Tomorrow", or the actual date
+              Text(
+                _dateOnly(selectedDate) == _dateOnly(DateTime.now())
+                    ? "Today"
+                    : _dateOnly(selectedDate) ==
+                    _dateOnly(DateTime.now().add(const Duration(days: 1)))
+                    ? "Tomorrow"
+                    : DateFormat('dd MMM').format(selectedDate),
+                // DateFormat('dd MMM') = "20 Jan", "05 Feb", etc.
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF5D9CFF),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
+
         // Swipe hint legend
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -164,8 +210,17 @@ class HomeContent extends StatelessWidget {
                 return Center(child: Text("Error: ${snapshot.error}"));
               }
 
-              final medicines = snapshot.data ?? [];
+              final allMedicines = snapshot.data ?? [];
 
+              // ── FILTER: only show medicines active on selectedDate ────
+              final medicines = allMedicines
+                  .where((med) => _shouldShowOnDate(med, selectedDate))
+                  .toList();
+              // .where((med) => ...) = keep only medicines that pass the check
+              // _shouldShowOnDate returns true only if selectedDate >= med.startDate
+              // .toList() = convert result to a List
+
+              // ── EMPTY STATE ──────────────────────────────────────────
               if (medicines.isEmpty) {
                 return Center(
                   child: Column(
@@ -173,9 +228,16 @@ class HomeContent extends StatelessWidget {
                     children: [
                       Icon(Icons.medication_liquid, size: 80, color: Colors.grey[400]),
                       const SizedBox(height: 10),
-                      const Text("No medications added yet.", style: TextStyle(color: Colors.grey)),
+                      // Show different message based on whether it's today or future
+                      Text(
+                        _dateOnly(selectedDate) == _dateOnly(DateTime.now())
+                            ? "No medications for today."
+                            : "No medications scheduled\nfor ${DateFormat('dd MMM').format(selectedDate)}.",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.grey),
+                      ),
                       const SizedBox(height: 6),
-                      const Text("Tap + to add your first medicine",
+                      const Text("Tap + to add a medicine",
                           style: TextStyle(color: Colors.grey, fontSize: 13)),
                     ],
                   ),
@@ -191,10 +253,8 @@ class HomeContent extends StatelessWidget {
 
                   return Dismissible(
                     key: Key(med.id),
-                    // Both directions enabled
                     direction: DismissDirection.horizontal,
 
-                    // LEFT swipe = mark taken (green)
                     background: Container(
                       alignment: Alignment.centerLeft,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -215,7 +275,6 @@ class HomeContent extends StatelessWidget {
                       ),
                     ),
 
-                    // RIGHT swipe = delete (red)
                     secondaryBackground: Container(
                       alignment: Alignment.centerRight,
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -235,7 +294,6 @@ class HomeContent extends StatelessWidget {
                     ),
 
                     confirmDismiss: (direction) async {
-                      // LEFT swipe → mark/unmark taken, don't dismiss
                       if (direction == DismissDirection.startToEnd) {
                         if (isTaken) {
                           await MedicineService.unmarkTaken(med.id);
@@ -248,10 +306,9 @@ class HomeContent extends StatelessWidget {
                             SnackBar(content: Text("✅ ${med.name} marked as taken!")),
                           );
                         }
-                        return false; // stay in list
+                        return false;
                       }
 
-                      // RIGHT swipe → confirm delete dialog
                       if (direction == DismissDirection.endToStart) {
                         final confirm = await showDialog<bool>(
                           context: context,
@@ -280,20 +337,17 @@ class HomeContent extends StatelessWidget {
                         );
 
                         if (confirm == true) {
-                          // Cancel notifications for this medicine
                           await NotificationService.cancelMedicineNotifications(
                             notificationBaseId: NotificationService.idFromDocId(med.id),
                             intakeCount: med.intakes.length,
                           );
-                          // Delete from Firestore
                           await MedicineService.deleteMedicine(med.id);
-
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text("🗑️ ${med.name} deleted")),
                           );
-                          return true; // remove from list
+                          return true;
                         }
-                        return false; // user cancelled
+                        return false;
                       }
 
                       return false;
