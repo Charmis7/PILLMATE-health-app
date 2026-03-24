@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pillmate_college/screens/routine_screen.dart';
+import 'bottom_nav_chart.dart';
 import 'bottom_nav_profile.dart';
-import 'medicine_model.dart';
 import 'medicine_service.dart';
+import 'model/medicine_model.dart';
 import 'notification_service.dart';
 
 class HomePageScreen extends StatefulWidget {
@@ -36,7 +37,7 @@ class _HomePageScreenState extends State<HomePageScreen> {
           onDateSelected: (date) => setState(() => _selectedDate = date),
         ),
         const Center(child: Text("Notifications & Updates")),
-        const Center(child: Text("Medicine Inventory")),
+        const bottom_nav_chart(),
         const bottom_nav_profile(),
       ][_selectedIndex],
       floatingActionButton: FloatingActionButton(

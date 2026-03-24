@@ -50,7 +50,7 @@ class RoutineSetupScreen extends StatelessWidget {
                         title: "Measurements",
                         sub: "Log health data and measurements",
                         imgPath: "assets/images/img_4.png",
-                        nextScreen: const Step_2_1(),
+                        nextScreen: Step_2_1(),
                         colorStart: Colors.green.shade100,
                         colorEnd: Colors.green.shade50,
                       ),

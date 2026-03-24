@@ -5,7 +5,7 @@ import 'package:pillmate_college/screens/step_2.2_screen.dart';
 class Step_2_1 extends StatelessWidget {
   const Step_2_1({super.key});
 
-  // Your list of data from the screenshot
+
   final List<String> measurements = const [
     "Blood pressure",
     "Resting heart rate",
@@ -37,7 +37,7 @@ class Step_2_1 extends StatelessWidget {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. SEARCH BAR
+
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
@@ -93,7 +93,6 @@ class Step_2_1 extends StatelessWidget {
   }
 }
 
-// Simple placeholder for the "Different Page"
 class DetailScreen extends StatelessWidget {
   final String title;
   const DetailScreen({super.key, required this.title});

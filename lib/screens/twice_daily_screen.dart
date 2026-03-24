@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'homepage_screen.dart';
-import 'medicine_model.dart';
+import 'model/medicine_model.dart';
 import 'medicine_service.dart';
 import 'notification_service.dart';
 

@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:pillmate_college/screens/notification_service.dart';
 import 'package:pillmate_college/screens/splash_screen.dart';
-import 'firebase_options.dart'; // <- make sure this exists
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize Firebase with web/mobile compatibility
+  // init Firebase
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform, // required for web
+    options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // Initialize local notifications (only works on mobile)
+  // init local notifications
   await NotificationService.init();
 
   runApp(const PillMateApp());

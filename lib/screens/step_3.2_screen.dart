@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'homepage_screen.dart';
+import 'tracker_model.dart';
+import 'tracker_service.dart';
+import 'notification_service.dart';
 
 class Step_3_2 extends StatefulWidget {
   final String title;
@@ -9,162 +14,190 @@ class Step_3_2 extends StatefulWidget {
 }
 
 class _Step_3_2State extends State<Step_3_2> {
-  // 1. DATA STORAGE
-  String frequency = "Once daily";
-  List<TimeOfDay> entryTimes = [const TimeOfDay(hour: 8, minute: 0)];
 
-  // 2. CLOCK LOGIC
-  Future<void> _selectTime(int index) async {
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: entryTimes[index],
+  DateTime  selectedDate = DateTime.now();
+  TimeOfDay selectedTime = const TimeOfDay(hour: 8, minute: 0);
+  bool      _isSaving    = false;
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context    : context,
+      initialDate: selectedDate,
+      firstDate  : DateTime.now(),
+      lastDate   : DateTime(2100),
     );
-    if (picked != null) {
-      setState(() {
-        entryTimes[index] = picked;
-      });
-    }
+    if (picked != null) setState(() => selectedDate = picked);
   }
 
-  // 3. EDIT FREQUENCY DIALOG
-  void _editFrequency() {
-    TextEditingController controller = TextEditingController(text: frequency);
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Set Frequency", style: TextStyle(color: Colors.black)),
-        content: TextField(
-          controller: controller,
-          style: const TextStyle(color: Colors.black),
-          decoration: const InputDecoration(
-            hintText: "e.g. Twice daily",
-            hintStyle: TextStyle(color: Colors.grey),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() => frequency = controller.text);
-              Navigator.pop(context);
-            },
-            child: const Text("Save", style: TextStyle(color: Color(0xFF5D9CFF))),
-          )
-        ],
-      ),
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context    : context,
+      initialTime: selectedTime,
     );
+    if (picked != null) setState(() => selectedTime = picked);
+  }
+
+  Future<void> _saveAndNavigate() async {
+    setState(() => _isSaving = true);
+    try {
+
+      final frequencyText =
+          '${DateFormat('MMM d').format(selectedDate)} at ${selectedTime.format(context)}';
+
+      final entry = TrackerEntry(
+        id       : '',
+        title    : widget.title,
+        type     : 'activity',     // ONLY difference from Step_2_2
+        frequency: frequencyText,
+        times    : [selectedTime],
+      );
+
+      // FIRESTORE: save tracker, returns auto-generated doc ID
+      final docId = await TrackerService.saveTracker(entry);
+
+      // LOCAL NOTIFICATIONS: fires once at exact date + time
+      final scheduledDateTime = DateTime(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+        selectedTime.hour,
+        selectedTime.minute,
+      );
+
+      await NotificationService.scheduleOnce(
+        notifId : NotificationService.idFromDocId(docId),
+        title   : '🏃 ${widget.title}',
+        body    : 'Time for your ${widget.title}',
+        dateTime: scheduledDateTime,
+      );
+
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePageScreen()),
+              (route) => false,
+        );
+      }
+
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // UPDATED: Background color to your specific Blue
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(widget.title, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            // TOP ICON
-            Center(child: Image.asset("assets/images/img_1.png", height: 220)),
-            const SizedBox(height: 20),
-            const Text(
-              "Set up reminders to regularly log your measurements and track your progress.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black87, fontSize: 16),
-            ),
-            const SizedBox(height: 30),
+      backgroundColor: const Color(0xFFD6EAFE),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              Image.asset('assets/images/img_1.png', height: 100),
+              const SizedBox(height: 20),
 
-            // FREQUENCY CARD (Editable)
-            GestureDetector(
-              onTap: _editFrequency,
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [BoxShadow(color: Colors.grey, blurRadius: 2)],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text("Frequency", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.black)),
-                          Text(frequency, style: const TextStyle(color: Colors.black54)),
-                        ],
+              Text(
+                'Reminder for ${widget.title}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontSize  : 22,
+                    fontWeight: FontWeight.bold,
+                    color     : Color(0xFF4C8CFF)),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'When would you like to be reminded?',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+
+                      // Date row
+                      _buildRow(
+                        label: 'Date',
+                        value: DateFormat('yMMMd').format(selectedDate),
+                        onTap: _pickDate,
                       ),
-                    ),
-                    const Icon(Icons.edit_outlined, color: Colors.black54),
-                  ],
+                      const Divider(),
+
+                      _sectionTitle('Reminder'),
+
+                      // Time row
+                      _buildRow(
+                        label: 'Time',
+                        value: selectedTime.format(context),
+                        onTap: _pickTime,
+                      ),
+
+                    ],
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 30),
 
-            // REMINDER DETAILS HEADER
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text("Reminder details", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black, fontSize: 16)),
-            ),
-
-            // DYNAMIC LIST OF TIMES
-            Expanded(
-              child: ListView.builder(
-                itemCount: entryTimes.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text("Entry ${index + 1}", style: const TextStyle(color: Colors.black)),
-                    trailing: TextButton(
-                      onPressed: () => _selectTime(index),
-                      child: Text("${entryTimes[index].format(context)} ▼",
-                          style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w500)),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // ADD ENTRY BUTTON
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton.icon(
-                onPressed: () => setState(() => entryTimes.add(const TimeOfDay(hour: 12, minute: 0))),
-                icon: const Icon(Icons.add, color: Colors.black),
-                label: const Text("Add entry time", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
-              ),
-            ),
-
-            const Divider(color: Colors.black26),
-            const SizedBox(height: 20),
-
-            // SAVE BUTTON
-            SizedBox(
-              width: double.infinity,
-              height: 55,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  // UPDATED: Button color to your specific Blue
-                  backgroundColor: const Color(0xFF5D9CFF),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  elevation: 2,
+              SizedBox(
+                width : double.infinity,
+                height: 55,
+                child : ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5D9CFF),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isSaving ? null : _saveAndNavigate,
+                  child: _isSaving
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                    'Set Reminder',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
                 ),
-                onPressed: () => Navigator.popUntil(context, (route) => route.isFirst),
-                child: const Text("Save", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _sectionTitle(String text) => Align(
+    alignment: Alignment.centerLeft,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(
+        text,
+        style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color     : Colors.blueGrey,
+            fontSize  : 14),
+      ),
+    ),
+  );
+
+  Widget _buildRow(
+      {required String label,
+        required String value,
+        required VoidCallback onTap}) =>
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        title   : Text(label,
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(value,
+                style: const TextStyle(color: Colors.blue, fontSize: 16)),
+            const Icon(Icons.arrow_drop_down, color: Colors.blue),
+          ],
+        ),
+        onTap: onTap,
+      );
 }

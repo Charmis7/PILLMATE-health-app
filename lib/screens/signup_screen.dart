@@ -1,7 +1,8 @@
+
 import 'package:flutter/material.dart';
-import 'package:pillmate_college/screens/login_screen.dart';
 import '../widget/reusable_widgets.dart';
-import 'auth_controller.dart';
+import 'auth_service.dart';
+import 'login_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -11,254 +12,145 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
-  // Text field controllers
-  TextEditingController nameController = TextEditingController();
-  TextEditingController emailController = TextEditingController();
-  TextEditingController passwordController = TextEditingController();
-  TextEditingController confirmPasswordController = TextEditingController();
 
-  // Auth controller instance
-  final AuthController authController = AuthController();
+  final _formKey                  = GlobalKey<FormState>();
+  final _nameController           = TextEditingController();
+  final _emailController          = TextEditingController();
+  final _passwordController       = TextEditingController();
+  final _confirmPasswordController= TextEditingController();
+  final _authService = AuthService();//auth
 
-  // UI state
-  bool hidePassword = true;
-  bool hideConfirmPassword = true;
-  bool isLoading = false;
+  bool _hidePassword        = true;
+  bool _hideConfirmPassword = true;
+  bool _isLoading           = false;
+
+  //  signup
+  Future<void> _signUp() async {
+    //form val
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+    // auth ser: calls firebase auth createUserWithEmailAndPassword a saves to Firestore
+    // Returns null = success | String = error message
+    final error = await _authService.signUp( // AUTH SERVICE CALL
+      name    : _nameController.text.trim(),
+      email   : _emailController.text.trim(),
+      password: _passwordController.text.trim(),
+    );
+
+    setState(() => _isLoading = false);
+
+    if (error == null) {
+      _showSuccess('Account created successfully!');
+      if (mounted) {
+        Navigator.pushReplacement(context,
+            MaterialPageRoute(builder: (_) => const LoginScreen()));
+      }
+    } else {
+      _showError(error);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return AuthBackground(
       imagePath: 'assets/images/topimg.png',
-      child: Column(
-        children: [
-          const Text(
-            "Create your Account",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 30),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            const Text('Create your Account',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 30),
 
-          // Name field
-          TextField(
-            controller: nameController,
-            decoration: InputDecoration(
-              labelText: "Name",
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
+            // Name
+            TextFormField(
+              controller: _nameController,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              decoration: InputDecoration(labelText: 'Name',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))),
+              validator: (v) => (v == null || v.isEmpty) ? 'Name is required' : null,
             ),
-          ),
-          const SizedBox(height: 15),
+            const SizedBox(height: 15),
 
-          // Email field
-          TextField(
-            controller: emailController,
-            keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              labelText: "Email",
-              hintText: "example@gmail.com",
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
+            // Email
+            TextFormField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              decoration: InputDecoration(labelText: 'Email', hintText: 'example@gmail.com',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Email is required';
+                if (!v.contains('@')) return 'Enter valid email';
+                return null;
+              },
             ),
-          ),
-          const SizedBox(height: 15),
+            const SizedBox(height: 15),
 
-          // Password field
-          TextField(
-            controller: passwordController,
-            obscureText: hidePassword,
-            decoration: InputDecoration(
-              labelText: "Password",
-              suffixIcon: IconButton(
-                icon: Icon(
-                  hidePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            // Password
+            TextFormField(
+              controller: _passwordController,
+              obscureText: _hidePassword,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              decoration: InputDecoration(
+                labelText: 'Password',
+                suffixIcon: IconButton(
+                  icon: Icon(_hidePassword ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () => setState(() => _hidePassword = !_hidePassword),
                 ),
-                onPressed: () {
-                  setState(() {
-                    hidePassword = !hidePassword;
-                  });
-                },
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Password required';
+                if (v.length < 8) return 'Minimum 8 characters';
+                return null;
+              },
             ),
-          ),
-          const SizedBox(height: 15),
+            const SizedBox(height: 15),
 
-          // Confirm password field
-          TextField(
-            controller: confirmPasswordController,
-            obscureText: hideConfirmPassword,
-            decoration: InputDecoration(
-              labelText: "Confirm Password",
-              suffixIcon: IconButton(
-                icon: Icon(
-                  hideConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            // Confirm password
+            TextFormField(
+              controller: _confirmPasswordController,
+              obscureText: _hideConfirmPassword,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              decoration: InputDecoration(
+                labelText: 'Confirm Password',
+                suffixIcon: IconButton(
+                  icon: Icon(_hideConfirmPassword ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () => setState(() => _hideConfirmPassword = !_hideConfirmPassword),
                 ),
-                onPressed: () {
-                  setState(() {
-                    hideConfirmPassword = !hideConfirmPassword;
-                  });
-                },
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Confirm your password';
+                if (v != _passwordController.text) return 'Passwords do not match';
+                return null;
+              },
             ),
-          ),
+            const SizedBox(height: 30),
 
-          const SizedBox(height: 30),
-
-          // Sign up button
-          isLoading
-              ? const CircularProgressIndicator()
-              : PrimaryButton(
-            text: "Sign up",
-            onPressed: signUpWithEmail,
-          ),
-
-          const SizedBox(height: 30),
-
-          const Center(
-            child: Text(
-              "- Or Sign Up With -",
-              style: TextStyle(color: Colors.grey),
-            ),
-          ),
-          const SizedBox(height: 15),
-
-          // Google sign up button
-          GestureDetector(
-            onTap: signUpWithGoogle,
-            child: Image.asset('assets/images/google.png', height: 40),
-          ),
-        ],
+            _isLoading
+                ? const CircularProgressIndicator()
+                : PrimaryButton(text: 'Sign Up', onPressed: _signUp),
+          ],
+        ),
       ),
     );
   }
 
-  // Sign up with email
-  void signUpWithEmail() async {
-    String name = nameController.text.trim();
-    String email = emailController.text.trim();
-    String password = passwordController.text.trim();
-    String confirmPassword = confirmPasswordController.text.trim();
-
-    // Validation
-    if (name.isEmpty) {
-      showError("Please enter your name");
-      return;
-    }
-
-    if (email.isEmpty) {
-      showError("Please enter your email");
-      return;
-    }
-
-    if (!email.contains("@")) {
-      showError("Please enter a valid email");
-      return;
-    }
-
-    if (password.isEmpty) {
-      showError("Please enter your password");
-      return;
-    }
-
-    if (password.length < 8) {
-      showError("Password must be at least 8 characters");
-      return;
-    }
-
-    if (confirmPassword.isEmpty) {
-      showError("Please confirm your password");
-      return;
-    }
-
-    if (password != confirmPassword) {
-      showError("Passwords do not match");
-      return;
-    }
-
-    // Call auth controller
-    final error = await authController.signUp(
-      name: name,
-      email: email,
-      password: password,
-      onLoadingChanged: (loading) {
-        setState(() {
-          isLoading = loading;
-        });
-      },
-    );
-
-    // Check result
-    if (error == null) {
-      showSuccess("Account created successfully!");
-      Future.delayed(const Duration(seconds: 2), () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      });
-    } else {
-      showError(error);
-    }
-  }
-
-  // Sign up with Google
-  void signUpWithGoogle() async {
-    final error = await authController.signUpWithGoogle(
-      onLoadingChanged: (loading) {
-        setState(() {
-          isLoading = loading;
-        });
-      },
-    );
-
-    if (error == null) {
-      showSuccess("Account created successfully!");
-      Future.delayed(const Duration(seconds: 2), () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      });
-    } else {
-      if (error != "Signup cancelled") {
-        showError(error);
-      }
-    }
-  }
-
-  void showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
-
-  void showSuccess(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
+  void _showError(String m)   => ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(m), backgroundColor: Colors.red));
+  void _showSuccess(String m) => ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(m), backgroundColor: Colors.green));
 
   @override
   void dispose() {
-    nameController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    confirmPasswordController.dispose();
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 }

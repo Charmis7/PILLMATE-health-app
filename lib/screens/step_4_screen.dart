@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../wellbeing_service.dart';
+import 'homepage_screen.dart';
 
 class Step_4 extends StatefulWidget {
   const Step_4({super.key});
@@ -9,11 +11,48 @@ class Step_4 extends StatefulWidget {
 }
 
 class _Step_4State extends State<Step_4> {
-  // We create simple variables to hold the information
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = const TimeOfDay(hour: 6, minute: 0);
-  String selectedMood = ""; // We will just store the emoji string here
+  String selectedMood = "";
   final TextEditingController _symptomsController = TextEditingController();
+  bool _isSaving = false;
+
+  Future<void> _saveAndNavigate() async {
+    // Validation
+    if (selectedMood.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please select your mood")),
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      // Save to Firestore
+      await WellbeingService.saveEntry(
+        WellbeingEntry(
+          id: '',
+          date: selectedDate,
+          time: selectedTime.format(context),
+          mood: selectedMood,
+          symptoms: _symptomsController.text.trim(),
+        ),
+      );
+
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePageScreen()),
+              (route) => false,
+        );
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error saving: $e")),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +63,7 @@ class _Step_4State extends State<Step_4> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SingleChildScrollView(
@@ -34,182 +71,113 @@ class _Step_4State extends State<Step_4> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- IMAGE ---
-            Center(
-              child: Image.asset("assets/images/img_7.png", height: 200),
-            ),
-
-            // --- TITLE ---
+            Center(child: Image.asset("assets/images/img_7.png", height: 200)),
             const Center(
-              child: Text(
-                "Track your well-being",
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
+              child: Text("Track your well-being",
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 30),
 
-            // --- DATE SECTION ---
+            // DATE
             const Text("Date:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             GestureDetector(
               onTap: () async {
-                // This is the simplest way to show a date picker
-                DateTime? pickedDate = await showDatePicker(
+                final picked = await showDatePicker(
                   context: context,
                   initialDate: DateTime.now(),
                   firstDate: DateTime(2020),
                   lastDate: DateTime(2030),
                 );
-                if (pickedDate != null) {
-                  setState(() {
-                    selectedDate = pickedDate;
-                  });
-                }
+                if (picked != null) setState(() => selectedDate = picked);
               },
               child: Text(
                 DateFormat('EEEE, MMM d, y').format(selectedDate),
                 style: const TextStyle(fontSize: 16, color: Colors.blueAccent),
               ),
             ),
-
             const SizedBox(height: 20),
 
-            // --- TIME SECTION ---
+            // TIME
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("Time", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 GestureDetector(
                   onTap: () async {
-                    // Simple time picker
-                    TimeOfDay? pickedTime = await showTimePicker(
+                    final picked = await showTimePicker(
                       context: context,
                       initialTime: TimeOfDay.now(),
                     );
-                    if (pickedTime != null) {
-                      setState(() {
-                        selectedTime = pickedTime;
-                      });
-                    }
+                    if (picked != null) setState(() => selectedTime = picked);
                   },
-                  child: Text(
-                    "${selectedTime.format(context)} ▼",
-                    style: const TextStyle(fontSize: 18, color: Colors.blueAccent),
-                  ),
+                  child: Text("${selectedTime.format(context)} ▼",
+                      style: const TextStyle(fontSize: 18, color: Colors.blueAccent)),
                 ),
               ],
             ),
-
             const SizedBox(height: 30),
 
-            // --- MOOD SECTION (NO LOOPS, JUST MANUAL) ---
-            const Text("How’s your mood?", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            // MOOD
+            const Text("How's your mood?",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // EMOJI 1
-                GestureDetector(
-                  onTap: () {
-                    setState(() { selectedMood = "😄"; });
-                  },
+              children: ["😄", "🙂", "😔", "😢"].map((emoji) {
+                final isSelected = selectedMood == emoji;
+                return GestureDetector(
+                  onTap: () => setState(() => selectedMood = emoji),
                   child: Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: selectedMood == "😄" ? Colors.white : Colors.transparent,
+                      color: isSelected ? Colors.white : Colors.transparent,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: selectedMood == "😄" ? Colors.blue : Colors.transparent),
+                      border: Border.all(
+                          color: isSelected ? Colors.blue : Colors.transparent),
                     ),
-                    child: const Text("😄", style: TextStyle(fontSize: 40)),
+                    child: Text(emoji, style: const TextStyle(fontSize: 40)),
                   ),
-                ),
-                // EMOJI 2
-                GestureDetector(
-                  onTap: () {
-                    setState(() { selectedMood = "🙂"; });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: selectedMood == "🙂" ? Colors.white : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: selectedMood == "🙂" ? Colors.blue : Colors.transparent),
-                    ),
-                    child: const Text("🙂", style: TextStyle(fontSize: 40)),
-                  ),
-                ),
-                // EMOJI 3
-                GestureDetector(
-                  onTap: () {
-                    setState(() { selectedMood = "😔"; });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: selectedMood == "😔" ? Colors.white : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: selectedMood == "😔" ? Colors.blue : Colors.transparent),
-                    ),
-                    child: const Text("😔", style: TextStyle(fontSize: 40)),
-                  ),
-                ),
-                // EMOJI 4
-                GestureDetector(
-                  onTap: () {
-                    setState(() { selectedMood = "😢"; });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: selectedMood == "😢" ? Colors.white : Colors.transparent,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: selectedMood == "😢" ? Colors.blue : Colors.transparent),
-                    ),
-                    child: const Text("😢", style: TextStyle(fontSize: 40)),
-                  ),
-                ),
-              ],
+                );
+              }).toList(),
             ),
-
             const SizedBox(height: 30),
 
-            // --- SYMPTOMS INPUT ---
-            const Text("Add your symptoms", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            // SYMPTOMS
+            const Text("Add your symptoms",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 10),
             TextField(
               controller: _symptomsController,
               decoration: const InputDecoration(
                 hintText: "Enter here...",
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.black)),
+                enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.black)),
               ),
             ),
-
             const SizedBox(height: 50),
 
-            // --- SAVE BUTTON ---
-            Container(
+            // SAVE BUTTON
+            SizedBox(
               width: double.infinity,
               height: 60,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                ),
-                onPressed: () {
-                  // We just print the values to see if they work
-                  print("Saved Mood: $selectedMood");
-                  print("Saved Symptoms: ${_symptomsController.text}");
-
-                  // Go back to the previous screen
-                  Navigator.pop(context);
-                },
-                child: const Text(
-                  "SAVE",
-                  style: TextStyle(color: Colors.white, fontSize: 20),
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                onPressed: _isSaving ? null : _saveAndNavigate,
+                child: _isSaving
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text("SAVE",
+                    style: TextStyle(color: Colors.white, fontSize: 20)),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _symptomsController.dispose();
+    super.dispose();
   }
 }
