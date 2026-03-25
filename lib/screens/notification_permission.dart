@@ -92,7 +92,8 @@ class _NotificationPermissionUIScreenState
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('notification_sound', _selectedSoundId);
 
-    await NotificationService.initWithSound(_selectedSoundId);
+   //noti
+     await NotificationService.initWithSound(_selectedSoundId);
 
     if (mounted) {
       Navigator.pushReplacement(
