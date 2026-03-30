@@ -1,0 +1,184 @@
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import '../../models/medicine_model.dart';
+import '../../services/medicine_service.dart';
+import '../../services/notification_service.dart';
+import '../other/homepage_screen.dart';
+
+class TwiceDailyScreen extends StatefulWidget {
+  final String medicineName;
+  final String unit;
+  final String condition;
+
+  const TwiceDailyScreen({
+    super.key,
+    required this.medicineName,
+    required this.unit,
+    required this.condition,
+  });
+
+  @override
+  State<TwiceDailyScreen> createState() => _TwiceDailyScreenState();
+}
+
+class _TwiceDailyScreenState extends State<TwiceDailyScreen> {
+  DateTime  selectedDate = DateTime.now();
+  TimeOfDay firstTime    = const TimeOfDay(hour: 8,  minute: 0);
+  TimeOfDay secondTime   = const TimeOfDay(hour: 20, minute: 0);
+  int       firstDose    = 1;
+  int       secondDose   = 1;
+  bool      _isSaving    = false;
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
+    if (picked != null) setState(() => selectedDate = picked);
+  }
+
+  Future<void> _pickTime(int slot) async {
+    final initial = slot == 1 ? firstTime : secondTime;
+    final picked  = await showTimePicker(context: context, initialTime: initial);
+    if (picked != null) {
+      setState(() => slot == 1 ? firstTime = picked : secondTime = picked);
+    }
+  }
+
+  Future<void> _save() async {
+    setState(() => _isSaving = true);
+    try {
+      final entry = MedicineEntry(
+        id       : '',
+        name     : widget.medicineName,
+        unit     : widget.unit,
+        condition: widget.condition,
+        frequency: 'twice',
+        startDate: selectedDate,
+        intakes  : [
+          IntakeSlot(time: firstTime,  dose: firstDose,  label: 'Morning'),
+          IntakeSlot(time: secondTime, dose: secondDose, label: 'Evening'),
+        ],
+      );
+
+      final docId = await MedicineService.saveMedicine(entry);
+
+      await NotificationService.scheduleMedicineNotifications(
+        notificationBaseId: NotificationService.idFromDocId(docId),
+        medicineName      : widget.medicineName,
+        intakes           : entry.intakes,
+      );
+
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePageScreen()),
+              (route) => false,
+        );
+      }
+    } catch (e) {
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFD6EAFE),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              Image.asset('assets/images/img_2.png', height: 100),
+              const SizedBox(height: 20),
+              Text(
+                'Reminders for ${widget.medicineName}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF4C8CFF)),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Set your morning and evening schedule',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildRow('Start date', DateFormat('yMMMd').format(selectedDate), _pickDate),
+                      const Divider(),
+                      _sectionTitle('Morning intake'),
+                      _buildRow('Time', firstTime.format(context),  () => _pickTime(1)),
+                      _doseRow(firstDose,  (v) => setState(() => firstDose  = v)),
+                      const Divider(),
+                      _sectionTitle('Evening intake'),
+                      _buildRow('Time', secondTime.format(context), () => _pickTime(2)),
+                      _doseRow(secondDose, (v) => setState(() => secondDose = v)),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: double.infinity,
+                height: 55,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF5D9CFF),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isSaving ? null : _save,
+                  child: _isSaving
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text('Set Reminders', style: TextStyle(color: Colors.white, fontSize: 18)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String text) => Align(
+    alignment: Alignment.centerLeft,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueGrey, fontSize: 14)),
+    ),
+  );
+
+  Widget _buildRow(String label, String value, VoidCallback onTap) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    title: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+    trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+      Text(value, style: const TextStyle(color: Colors.blue, fontSize: 16)),
+      const Icon(Icons.arrow_drop_down, color: Colors.blue),
+    ]),
+    onTap: onTap,
+  );
+
+  Widget _doseRow(int dose, Function(int) onChanged) => Row(
+    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    children: [
+      const Text('Dose', style: TextStyle(fontWeight: FontWeight.bold)),
+      Row(children: [
+        IconButton(
+          icon: const Icon(Icons.remove_circle_outline, color: Colors.blue),
+          onPressed: dose > 1 ? () => onChanged(dose - 1) : null,
+        ),
+        Text('$dose ${widget.unit}', style: const TextStyle(color: Colors.blue)),
+        IconButton(
+          icon: const Icon(Icons.add_circle_outline, color: Colors.blue),
+          onPressed: () => onChanged(dose + 1),
+        ),
+      ]),
+    ],
+  );
+}
